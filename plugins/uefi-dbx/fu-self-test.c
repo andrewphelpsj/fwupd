@@ -209,8 +209,6 @@ fu_self_test_set_up(FuTestFixture *fixture, gconstpointer user_data)
 	if (tc->with_snapd && fu_self_test_mock_snapd_init(fixture)) {
 		fixture->mock_snapd_available = TRUE;
 
-		(void)g_setenv("SNAP", "fwupd", TRUE);
-
 		fu_self_test_mock_snapd_setup_scenario(fixture, tc->mock_snapd_scenario);
 	}
 
@@ -227,8 +225,6 @@ fu_self_test_tear_down(FuTestFixture *fixture, gconstpointer user_data)
 {
 	FuTestCase *tc = (FuTestCase *)user_data;
 	if (tc->with_snapd) {
-		g_unsetenv("SNAP");
-
 		if (fixture->mock_snapd_available)
 			fu_self_test_mock_snapd_reset(fixture);
 

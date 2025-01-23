@@ -35,7 +35,7 @@ fu_uefi_dbx_plugin_device_created(FuPlugin *plugin, FuDevice *device, GError **e
 	if (self->snapd_notifier != NULL) {
 		fu_uefi_dbx_device_set_snapd_notifier(FU_UEFI_DBX_DEVICE(device),
 						      self->snapd_notifier);
-	} else if (!inhibited && self->snapd_integration_supported && fu_snap_is_in_snap()) {
+	} else if (!inhibited && self->snapd_integration_supported) {
 		/* we're running inside a snap, the device is not inhibited and snapd
 		 * supports integration, in which case this is a hard error and we
 		 * should not give an option to dbx */
@@ -85,14 +85,17 @@ static void
 fu_uefi_dbx_plugin_constructed(GObject *obj)
 {
 	FuPlugin *plugin = FU_PLUGIN(obj);
+	FuUefiDbxPlugin *self = FU_UEFI_DBX_PLUGIN(plugin);
+	FuContext *ctx = fu_plugin_get_context(plugin);
+
 	fu_plugin_add_rule(plugin, FU_PLUGIN_RULE_METADATA_SOURCE, "uefi_capsule");
 	fu_plugin_add_firmware_gtype(plugin, NULL, FU_TYPE_EFI_SIGNATURE_LIST);
 	fu_plugin_add_device_gtype(plugin, FU_TYPE_UEFI_DBX_DEVICE);
 
-	if (fu_snap_is_in_snap()) {
-		FuUefiDbxPlugin *self = FU_UEFI_DBX_PLUGIN(plugin);
+	/* only enable snapd integration if either running inside a snap or we detect that this is a
+	snapd FDE setup */
+	if (fu_snap_is_in_snap() || fu_context_has_flag(ctx, FU_CONTEXT_FLAG_FDE_SNAPD)) {
 		g_autoptr(GError) error_local = NULL;
-		/* only enable snapd integration if running inside a snap */
 		if (!fu_uefi_dbx_plugin_snapd_notify_init(FU_UEFI_DBX_PLUGIN(obj), &error_local)) {
 			/* specific error code if relevant APIs are not present and thus
 			 * integration cannot be supported */
@@ -101,12 +104,9 @@ fu_uefi_dbx_plugin_constructed(GObject *obj)
 
 			g_info("snapd integration non-functional: %s", error_local->message);
 		} else {
-			g_info("snapd integration enabled ");
+			g_info("snapd integration enabled");
 			self->snapd_integration_supported = TRUE;
 		}
-	} else {
-		/* TODO figure out non-snap scenarios */
-		g_info("snapd integration outside of snap is not supported");
 	}
 }
 
